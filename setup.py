@@ -9,6 +9,7 @@ setup(name="uxml", version="0.1.0",
       author_email='thebobuk@ya.ru',
       description='uRPC is oversimplistic stream XML parser',
       long_description=README,
+      long_description_content_type="text/markdown",
       classifiers = [
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
