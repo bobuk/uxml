@@ -1,73 +1,104 @@
-import xml.etree.ElementTree as ET
+import xml.sax
+from copy import copy
 import re
 
-def element_to_dict(element, clean=False):
-    '''Convert xml element to pythonic structures like dict or string.
-    params: clean (False by default) if set - return only attribs and children of this element
-    '''
-    tag = element.tag
-    text = [element.text.strip() if element.text else "", ]
+TEXT = "#text"
 
-    d = {"@"+a:v for a,v in element.attrib.items()}
-
-    for kid in element:
-        text.append(kid.tail.strip() if kid.tail else "")
-        ch = element_to_dict(kid)
-        if kid.tag in d:
-            c = d[kid.tag]
-            if isinstance(c, list):
-                c.append(ch[kid.tag])
+def composer(wl,frm = 0):
+    res = {}
+    last_tag = wl[frm][0]
+    skipline = 0
+    for num, line in enumerate(wl[frm:], start=frm):
+        if skipline and skipline !=num:
+            continue
+        skipline = 0
+        [tag, data] = line
+        if tag == last_tag:
+            if type(data) == str:
+                if data.strip():
+                    try:
+                        res[TEXT] += data
+                    except:
+                        res[TEXT] = data
             else:
-                d[kid.tag] = [c, ch[kid.tag]]
+                res.update(data)
         else:
-            d[kid.tag] = ch[kid.tag]
+            if len(tag) > len(last_tag):
+                newtag, newres, line = composer(wl, frm=num)
+                if newtag in res:
+                    if type(res[newtag]) == list:
+                        res[newtag].append(newres)
+                    else:
+                        res[newtag] = [res[newtag], newres]
+                else:
+                    res[newtag] = newres
+                skipline = line
+            else:
+                if len(res) == 1 and TEXT in res:
+                    res = res[TEXT]
+                return last_tag[-1], res, num
+    return last_tag[-1], res, num
 
-    text = [t for t in text if t]
-    text = text[0] if len(text) == 1 else '\n'.join(text)
-    if d:
-        if text:
-            d["#text"] = text
-    else:
-        d = text
-    return d if clean else {tag: d}
+def block_to_dict(wl):
+    last_tag, res, num = composer(wl, 0)
+    return res
+
+class uXMLParser(xml.sax.ContentHandler):
+    def __init__(self, flt, callback):
+        self.finder = flt
+        self.callback = callback
+        self.path = []
+        self.current = []
+        self.subs = []
+        super().__init__()
+
+    def startElement(self, name, attrs):
+        self.path.append(name)
+        self._p = '/' + '/'.join(self.path)
+        if self.finder(self._p):
+            self.subs.append(name)
+            _r = copy(self.subs)
+            attrs_w = {'@' + k: v for k,v in attrs.items() if k and v}
+            if attrs_w:
+                self.current.append([_r, attrs_w])
+                    
+    def characters(self, content):
+        if not self.current: return
+        self.current.append([copy(self.subs), content])
+
+    def endElement(self, name):
+        if self.path[-1] != name:
+            raise Exception('What???')
+        self.path.pop()
+        self._p = '/' + '/'.join(self.path)
+        if self.current:
+            try:
+                self.subs.pop()
+            except:
+                return # empty tag?
+            if not self.finder(self._p):
+                self.callback(block_to_dict(self.current))
+                self.current = []
+                self.subs = []
 
 class Parser:
     def __init__(self, source):
         self.source = source
-        self.comp = []
 
-    def find(self, area, cb, clean=True):
+    def find(self, area, cb):
         if not callable(area):
             if not hasattr(area, 'match'):
-                area = area.replace('//', '.*/') + '$'
+                area = area.replace('//', '.*/') + '.*$'
                 area = re.compile(area)
-            comp = lambda c, e: area.match(c)
+            comp = lambda c: area.match(c)
         else:
             comp = area
-        opts = {'clean': clean}
-        self.comp.append(
-            (comp, cb, opts, )
-        )
+        self.comp = comp
+        self.callback = cb
         return self
     
-    def start(self, cleanup = True):
-        parser = ET.XMLPullParser(events=('start', 'end'))
-        position = []
-        for chunk in self.source.read():
-            parser.feed(chunk)
-            for action, element in parser.read_events():
-                if action == 'start':
-                    position.append(element.tag)
-                elif action == 'end':
-                    if element.tag == position[-1]:
-                        pos = '/' + '/'.join(position)
-                        for comp, callback, opts in self.comp:
-                            if comp(pos, element):
-                                res = callback(element_to_dict(element, clean=opts['clean']))
-                                if cleanup:
-                                    # this is very nasty, beware
-                                    element.clear()
-                        position.pop()
-                    else:
-                        raise Exception(f'What a heck? {element}')
-
+    def start(self):
+        u_parser = uXMLParser(self.comp, self.callback)
+        parser = xml.sax.make_parser()
+        parser.setContentHandler(u_parser)
+        parser.parse(self.source)
