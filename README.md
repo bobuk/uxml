@@ -16,13 +16,17 @@ I use nanoxpath notation (i.e. you should show full path to this tags or use `//
 Second argument of `find` is a callback which will be invoked if given tag is found and the only argument for this callback is a internal structure of tags and attributes inside this tag. Attributes can be separated from children tags by name, it's always starts with '@' symbol.
 If tag is just one internal text - it will be returned as result. If there's more than one children with same name, it will be returned as list of tags. If tag have both internal text and attributes, first will be added to attributes as '#text'.
 
+You can use unlimited number of `find`'s.
 Parsing will start with `start` method. Example above will print every item inside given rss file.
 Let me show you a little bit more complicated stuff.
 
 ```python
+res = []
 p = uxml.Parser(open('test.rss'))
-p.find('//description', lambda x: print(x)).start()
+p.find('//link', lambda x: res.append(x)).find('//description', lambda x: print(x)).start()
 ```
 
 First off all you can notice what `find` and `start` calls are chainable.
 Trailing `/` will convert to any number of previous tags, so this time we will got list of links at `res` variable.
+
+
