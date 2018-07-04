@@ -44,48 +44,47 @@ def block_to_dict(wl):
     return res
 
 class uXMLParser(xml.sax.ContentHandler):
-    def __init__(self, flt, callback):
-        self.finder = flt
-        self.callback = callback
+    def __init__(self, catchers):
         self.path = []
-        self.current = []
-        self.subs = []
+        # self.subs = []
+        # self.current = []
+        self.catchers = catchers
         super().__init__()
 
     def startElement(self, name, attrs):
         self.path.append(name)
         self._p = '/' + '/'.join(self.path)
-        if self.finder(self._p):
-            self.subs.append(name)
-            _r = copy(self.subs)
-            attrs_w = {'@' + k: v for k,v in attrs.items() if k and v}
-            if attrs_w:
-                self.current.append([_r, attrs_w])
+        attrs_w = {'@' + k: v for k,v in attrs.items() if k and v}
+        for element in self.catchers:
+            if element(self._p):
+                element.subs.append(name)
+                _r = copy(element.subs)
+                if attrs_w:
+                    element.current.append([_r, attrs_w])
                     
     def characters(self, content):
-        if not self.current: return
-        self.current.append([copy(self.subs), content])
+        for element in self.catchers:
+            if element.current:
+                element.current.append([copy(element.subs), content])
 
     def endElement(self, name):
         if self.path[-1] != name:
             raise Exception('What???')
         self.path.pop()
         self._p = '/' + '/'.join(self.path)
-        if self.current:
-            try:
-                self.subs.pop()
-            except:
-                return # empty tag?
-            if not self.finder(self._p):
-                self.callback(block_to_dict(self.current))
-                self.current = []
-                self.subs = []
+        for element in self.catchers:
+            if element.current:
+                try:
+                    element.subs.pop()
+                except:
+                    continue # empty tag?
+                if not element(self._p):
+                    element.callback(block_to_dict(element.current))
+                    element.cleanup()
 
-class Parser:
-    def __init__(self, source):
-        self.source = source
-
-    def find(self, area, cb):
+class Catcher:
+    def __init__(self, area, cb):
+        self._comp = str(area)
         if not callable(area):
             if not hasattr(area, 'match'):
                 area = area.replace('//', '.*/') + '.*$'
@@ -95,10 +94,28 @@ class Parser:
             comp = area
         self.comp = comp
         self.callback = cb
+        self.cleanup()
+
+    def cleanup(self):
+        self.subs = []
+        self.current = []
+
+    def __call__(self, arg):
+        return self.comp(arg)
+    def __repr__(self):
+        return f"Catcher {self._comp}"
+
+class Parser:
+    def __init__(self, source):
+        self.source = source
+        self.catchers = []
+    
+    def find(self, area, cb):
+        self.catchers.append(Catcher(area, cb))
         return self
     
     def start(self):
-        u_parser = uXMLParser(self.comp, self.callback)
+        u_parser = uXMLParser(self.catchers)
         parser = xml.sax.make_parser()
         parser.setContentHandler(u_parser)
         parser.parse(self.source)

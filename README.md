@@ -25,4 +25,4 @@ p.find('//description', lambda x: print(x)).start()
 ```
 
 First off all you can notice what `find` and `start` calls are chainable.
-Trailing `/` will convert to any number of previous tags.
+Trailing `/` will convert to any number of previous tags, so this time we will got list of links at `res` variable.
