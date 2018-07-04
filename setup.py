@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 with open('README.md') as readme_file:
     README = readme_file.read()
 
-setup(name="uxml", version="0.2.2",
+setup(name="uxml", version="0.2.3",
       py_modules=['uxml'],
       url="http://github.com/bobuk/uxml",
       author="Grigory Bakunov",

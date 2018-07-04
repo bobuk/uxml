@@ -37,6 +37,8 @@ def composer(wl,frm = 0):
                 if len(res) == 1 and TEXT in res:
                     res = res[TEXT]
                 return last_tag[-1], res, num
+    if len(res) == 1 and TEXT in res:
+        res = res[TEXT]
     return last_tag[-1], res, num
 
 def block_to_dict(wl):
