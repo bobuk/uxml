@@ -109,8 +109,8 @@ class Catcher:
 
 enca = re.compile(".*encoding=[\'\"](.*)[\'\"].*\?")
 def guess_xml_encoding(fname):
-    with open(fname, 'r') as fl:
-        line = fl.readline().strip().lower()
+    with open(fname, 'rb') as fl:
+        line = fl.readline().decode('latin1').strip().lower()
         enc = enca.findall(line)
         return enc[0] if enc else None
         
