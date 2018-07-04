@@ -59,8 +59,7 @@ class uXMLParser(xml.sax.ContentHandler):
             if element(self._p):
                 element.subs.append(name)
                 _r = copy(element.subs)
-                if attrs_w:
-                    element.current.append([_r, attrs_w])
+                element.current.append([_r, attrs_w])
                     
     def characters(self, content):
         for element in self.catchers:
