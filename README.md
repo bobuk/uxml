@@ -22,11 +22,11 @@ Let me show you a little bit more complicated stuff.
 
 ```python
 res = []
-p = uxml.Parser(open('test.rss'))
+p = uxml.Parser('test.rss')
 p.find('//link', lambda x: res.append(x)).find('//description', lambda x: print(x)).start()
 ```
 
 First off all you can notice what `find` and `start` calls are chainable.
 Trailing `/` will convert to any number of previous tags, so this time we will got list of links at `res` variable.
-
+Also we just pass 'test.rss' filename to Parser constructor. It's not only open this file but also trying to guess XML encoding (very poorly but anyway).
 

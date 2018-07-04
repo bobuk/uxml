@@ -1,6 +1,7 @@
 import xml.sax
 from copy import copy
 import re
+import os.path
 
 TEXT = "#text"
 
@@ -106,9 +107,19 @@ class Catcher:
     def __repr__(self):
         return f"Catcher {self._comp}"
 
+enca = re.compile(".*encoding=[\'\"](.*)[\'\"].*\?")
+def guess_xml_encoding(fname):
+    with open(fname, 'r') as fl:
+        line = fl.readline().strip().lower()
+        enc = enca.findall(line)
+        return enc[0] if enc else None
+        
 class Parser:
     def __init__(self, source):
         self.source = source
+        if type(source) == str:
+            if os.path.isfile(source):
+                self.source=open(source, 'r', encoding=guess_xml_encoding(source))
         self.catchers = []
     
     def find(self, area, cb):
