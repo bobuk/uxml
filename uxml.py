@@ -5,14 +5,17 @@ import os.path
 from collections import defaultdict
 
 TEXT = "#text"
+
+
 class XMLMap(defaultdict):
     def __init__(self):
         super().__init__()
 
     def __getattr__(self, key):
-        if key == '_text': key = TEXT
-        if key.startswith('_'):
-            wed = '@' + key[1:]
+        if key == "_text":
+            key = TEXT
+        if key.startswith("_"):
+            wed = "@" + key[1:]
             if wed in self:
                 return self[wed]
         try:
@@ -21,19 +24,22 @@ class XMLMap(defaultdict):
             raise AttributeError(key)
 
     def __setattr__(self, key, value):
-        if key == '_text': key = TEXT
-        self[key] = value    
+        if key == "_text":
+            key = TEXT
+        self[key] = value
 
     __delattr__ = defaultdict.__delitem__
 
+
 DATACLASS = XMLMap
 
-def composer(wl,frm = 0):
+
+def composer(wl, frm=0):
     res = DATACLASS()
     last_tag = wl[frm][0]
     skipline = 0
     for num, line in enumerate(wl[frm:], start=frm):
-        if skipline and skipline !=num:
+        if skipline and skipline != num:
             continue
         skipline = 0
         [tag, data] = line
@@ -65,9 +71,11 @@ def composer(wl,frm = 0):
         res = res[TEXT]
     return last_tag[-1], res, num
 
+
 def block_to_dict(wl):
     last_tag, res, num = composer(wl, 0)
     return res
+
 
 class uXMLParser(xml.sax.ContentHandler):
     def __init__(self, catchers):
@@ -79,14 +87,14 @@ class uXMLParser(xml.sax.ContentHandler):
 
     def startElement(self, name, attrs):
         self.path.append(name)
-        self._p = '/' + '/'.join(self.path)
-        attrs_w = {'@' + k: v for k,v in attrs.items() if k and v}
+        self._p = "/" + "/".join(self.path)
+        attrs_w = {"@" + k: v for k, v in attrs.items() if k and v}
         for element in self.catchers:
             if element(self._p):
                 element.subs.append(name)
                 _r = copy(element.subs)
                 element.current.append([_r, attrs_w])
-                    
+
     def characters(self, content):
         for element in self.catchers:
             if element.current:
@@ -94,25 +102,26 @@ class uXMLParser(xml.sax.ContentHandler):
 
     def endElement(self, name):
         if self.path[-1] != name:
-            raise Exception('What???')
+            raise Exception("What???")
         self.path.pop()
-        self._p = '/' + '/'.join(self.path)
+        self._p = "/" + "/".join(self.path)
         for element in self.catchers:
             if element.current:
                 try:
                     element.subs.pop()
                 except:
-                    continue # empty tag?
+                    continue  # empty tag?
                 if not element(self._p):
                     element.callback(block_to_dict(element.current))
                     element.cleanup()
+
 
 class Catcher:
     def __init__(self, area, cb):
         self._comp = str(area)
         if not callable(area):
-            if not hasattr(area, 'match'):
-                area = area.replace('//', '.*/') + '.*$'
+            if not hasattr(area, "match"):
+                area = area.replace("//", ".*/") + ".*$"
                 area = re.compile(area)
             comp = lambda c: area.match(c)
         else:
@@ -127,28 +136,33 @@ class Catcher:
 
     def __call__(self, arg):
         return self.comp(arg)
+
     def __repr__(self):
         return f"Catcher {self._comp}"
 
-enca = re.compile(".*encoding=[\'\"](.*)[\'\"].*\?")
+
+enca = re.compile(".*encoding=['\"](.*)['\"].*\?")
+
+
 def guess_xml_encoding(fname):
-    with open(fname, 'rb') as fl:
-        line = fl.readline().decode('latin1').strip().lower()
+    with open(fname, "rb") as fl:
+        line = fl.readline().decode("latin1").strip().lower()
         enc = enca.findall(line)
         return enc[0] if enc else None
-        
+
+
 class Parser:
     def __init__(self, source):
         self.source = source
         if type(source) == str:
             if os.path.isfile(source):
-                self.source=open(source, 'r', encoding=guess_xml_encoding(source))
+                self.source = open(source, "r", encoding=guess_xml_encoding(source))
         self.catchers = []
-    
+
     def find(self, area, cb):
         self.catchers.append(Catcher(area, cb))
         return self
-    
+
     def start(self):
         u_parser = uXMLParser(self.catchers)
         parser = xml.sax.make_parser()
