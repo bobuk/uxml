@@ -2,11 +2,34 @@ import xml.sax
 from copy import copy
 import re
 import os.path
+from collections import defaultdict
 
 TEXT = "#text"
+class XMLMap(defaultdict):
+    def __init__(self):
+        super().__init__()
+
+    def __getattr__(self, key):
+        if key == '_text': key = TEXT
+        if key.startswith('_'):
+            wed = '@' + key[1:]
+            if wed in self:
+                return self[wed]
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError(key)
+
+    def __setattr__(self, key, value):
+        if key == '_text': key = TEXT
+        self[key] = value    
+
+    __delattr__ = defaultdict.__delitem__
+
+DATACLASS = XMLMap
 
 def composer(wl,frm = 0):
-    res = {}
+    res = DATACLASS()
     last_tag = wl[frm][0]
     skipline = 0
     for num, line in enumerate(wl[frm:], start=frm):
