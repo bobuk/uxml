@@ -5,7 +5,7 @@ with open("README.md") as readme_file:
 
 setup(
     name="uxml",
-    version="0.2.5",
+    version="0.3.0",
     py_modules=["uxml"],
     url="http://github.com/bobuk/uxml",
     author="Grigory Bakunov",
